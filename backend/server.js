@@ -3,8 +3,11 @@ const cors = require("cors");
 const mongoose = require('mongoose');
 require('dotenv').config()
 
-
 const app = express();
+
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log("Conectado a MongoDB"))
+  .catch(err => console.error("Error de conexión a MongoDB:", err));
 
 // Settings
 app.set("port", process.env.PORT || 3000);
@@ -23,10 +26,6 @@ app.use(express.json());
 
 // Routes
 app.use("/api", require("./routes/index"));
-
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log("Conectado a MongoDB"))
-  .catch(err => console.error("Error de conexión a MongoDB:", err));
 
 app.listen(app.get("port"), () => {
     console.log(`Server on PORT ${app.get("port")}`);

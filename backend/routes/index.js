@@ -1,113 +1,106 @@
 const { Router } = require("express");
 const router = Router();
-const _ = require("underscore");
-const fs = require("fs");
-
-const datosPokemon = require("../pokemon.json");
+const Pokemon = require("../../models/pokemon.model");
 
 router.get("/", (req, res) => {
     res.send("Hola mundo desde la API para consultar Pokemon");
 });
 
 // Agregar Pokemon
-router.post("/pokemon/agregar", (req, res) => {
+router.post("/pokemon/agregar", async (req, res) => {
     const { id, name, types, sprite } = req.body;
 
     if (id && name && types && sprite) {
-        const nuevoPokemon = req.body;
-
-        leerJSON = JSON.parse(fs.readFileSync("backend/pokemon.json"));
-        leerJSON.pokemon.push(nuevoPokemon);
-        fs.writeFileSync(
-            "backend/pokemon.json",
-            JSON.stringify(leerJSON, null, 2)
-        );
-
-        res.json({
-            message: "Pokémon agregado correctamente",
-            pokemon: nuevoPokemon,
-        });
+        try {
+            const nuevoPokemon = new Pokemon(req.body);
+            await nuevoPokemon.save();
+            res.json({
+                message: "Pokémon agregado correctamente",
+                pokemon: nuevoPokemon,
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
     } else {
-        res.status(500).json({ error: "Datos incompletos" });
+        res.status(400).json({ error: "Datos incompletos" });
     }
 });
 
 // Eliminar Pokemon
-router.delete("/pokemon/delete/:nombre", (req, res) => {
-    leerJSON = JSON.parse(fs.readFileSync("backend/pokemon.json"));
-
-    const nombre = req.params.nombre.toLowerCase();
-    const index = datosPokemon.pokemon.findIndex(
-        (poke) => poke.name.toLowerCase() === nombre
-    );
-
-    if (index !== -1) {
-        leerJSON.pokemon.splice(index, 1);
-        fs.writeFileSync(
-            "backend/pokemon.json",
-            JSON.stringify(leerJSON, null, 2)
-        );
-        res.send(`Pokémon ${nombre} eliminado correctamente`);
-    } else {
-        res.status(404).json({ error: "No se encontró el pokemon" });
+router.delete("/pokemon/delete/:nombre", async (req, res) => {
+    try {
+        const nombre = req.params.nombre.toLowerCase();
+        const pokemon = await Pokemon.findOneAndDelete({ name: nombre });
+        
+        if (pokemon) {
+            res.send(`Pokémon ${nombre} eliminado correctamente`);
+        } else {
+            res.status(404).json({ error: "No se encontró el pokemon" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 
 //Actualizar Pokemon
-router.put("/pokemon/update/:nombre", (req, res) => {
-    const nombre = req.params.nombre.toLowerCase();
-    const pokemonActualizado = req.body;
-    leerJSON = JSON.parse(fs.readFileSync("backend/pokemon.json"));
-
-    const pokemonIndex = leerJSON.pokemon.findIndex(
-        (poke) => poke.name.toLowerCase() === nombre
-    );
-
-    if (pokemonIndex !== -1) {
-        leerJSON.pokemon[pokemonIndex] = pokemonActualizado;
-        fs.writeFileSync(
-            "backend/pokemon.json",
-            JSON.stringify(leerJSON, null, 2)
+router.put("/pokemon/update/:nombre", async (req, res) => {
+    try {
+        const nombre = req.params.nombre.toLowerCase();
+        const pokemonActualizado = await Pokemon.findOneAndUpdate(
+            { name: nombre },
+            req.body,
+            { new: true }
         );
-        res.json(pokemonActualizado);
-    } else {
-        res.status(404).json({ error: "No se encontró el pokemon" });
+        
+        if (pokemonActualizado) {
+            res.json(pokemonActualizado);
+        } else {
+            res.status(404).json({ error: "No se encontró el pokemon" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 
 // Mostrar todos los Pokemones en formato JSON
-router.get("/pokemon", (req, res) => {
-    res.json(datosPokemon);
+router.get("/pokemon", async (req, res) => {
+    try {
+        const pokemons = await Pokemon.find();
+        res.json({ pokemon: pokemons });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // Mostrar Pokemon especifico
-router.get("/pokemon/:nombre", (req, res) => {
-    const nombre = req.params.nombre.toLowerCase();
-    const pokemon = datosPokemon.pokemon.find(
-        (poke) => poke.name.toLowerCase() === nombre
-    );
-
-    if (pokemon) {
-        res.json(pokemon);
-    } else {
-        res.status(404).json({ error: "No se encontró el pokemon" });
+router.get("/pokemon/:nombre", async (req, res) => {
+    try {
+        const nombre = req.params.nombre.toLowerCase();
+        const pokemon = await Pokemon.findOne({ name: nombre });
+        
+        if (pokemon) {
+            res.json(pokemon);
+        } else {
+            res.status(404).json({ error: "No se encontró el pokemon" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 
 // Mostrar Pokemon especifico por id
-router.get("/pokemon/id/:id", (req, res) => {
-    const id = req.params.id;
-    const pokemon = datosPokemon.pokemon.find(
-        (poke) => poke.id == id
-    );
-    
-    console.log(pokemon);
-
-
-    if (pokemon) {
-        res.json(pokemon);
-    } else {
-        res.status(404).json({ error: "No se encontró el pokemon" });
+router.get("/pokemon/id/:id", async (req, res) => {
+    try {
+        const id = req.params.id;
+        const pokemon = await Pokemon.findOne({ id: id });
+        
+        if (pokemon) {
+            res.json(pokemon);
+        } else {
+            res.status(404).json({ error: "No se encontró el pokemon" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 
